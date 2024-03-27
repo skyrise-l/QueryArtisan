@@ -1,0 +1,33 @@
+
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "postgresql",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "/mnt/d/linux/pgdb/bin/postgres",
+            "processId": "${command:pickProcess}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description":  "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                },
+                {
+                    "text": "-gdb-set follow-fork-mode child"
+                },
+                {
+                    "description": "ignore SIGUSR1 signal",
+                    "text": "handle SIGUSR1 nostop noprint pass"
+                }
+          ]
+        }
+    ]
+}

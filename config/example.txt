@@ -1,0 +1,75 @@
+data follows:
+## 2. Now, for the second step, I will provide you with all the table names, absolute paths of the tables, and their column names that you will use in this data analysis. Please remember this information:
+Table 1 's name is: 'customer.csv', Its absolute path is:'/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/customer.csv', Its column names are as follows:customer.c_custkey,customer.c_name,customer.c_address,customer.c_nationkey,customer.c_phone,customer.c_acctbal,customer.c_mktsegment,customer.c_comment.
+Table 2 's name is: 'lineitem.csv', Its absolute path is:'/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/lineitem.csv', Its column names are as follows:lineitem.l_orderkey,lineitem.l_partkey,lineitem.l_suppkey,lineitem.l_linenumber,lineitem.l_quantity,lineitem.l_extendedprice,lineitem.l_discount,lineitem.l_tax,lineitem.l_returnflag,lineitem.l_linestatus,lineitem.l_shipdate,lineitem.l_commitdate,lineitem.l_receiptdate,lineitem.l_shipinstruct,lineitem.l_shipmode,lineitem.l_comment.
+Table 3 's name is: 'nation.csv', Its absolute path is:'/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/nation.csv', Its column names are as follows:nation.n_nationkey,nation.n_name,nation.n_regionkey,nation.n_comment.
+Table 4 's name is: 'orders.csv', Its absolute path is:'/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/orders.csv', Its column names are as follows:orders.o_orderkey,orders.o_custkey,orders.o_orderstatus,orders.o_totalprice,orders.o_orderdate,orders.o_orderpriority,orders.o_clerk,orders.o_shippriority,orders.o_comment.
+Table 5 's name is: 'part.csv', Its absolute path is:'/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/part.csv', Its column names are as follows:part.p_partkey,part.p_name,part.p_mfgr,part.p_brand,part.p_type,part.p_size,part.p_container,part.p_retailprice,part.p_comment.
+Table 6 's name is: 'partsupp.csv', Its absolute path is:'/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/partsupp.csv', Its column names are as follows:partsupp.ps_partkey,partsupp.ps_suppkey,partsupp.ps_availqty,partsupp.ps_supplycost,partsupp.ps_comment.
+Table 7 's name is: 'region.csv', Its absolute path is:'/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/region.csv', Its column names are as follows:region.r_regionkey,region.r_name,region.r_comment.
+Table 8 's name is: 'supplier.csv', Its absolute path is:'/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/supplier.csv', Its column names are as follows:supplier.s_suppkey,supplier.s_name,supplier.s_address,supplier.s_nationkey,supplier.s_phone,supplier.s_acctbal,supplier.s_comment.
+
+query follows:
+SELECT c_count, COUNT(*) AS custdist
+FROM (
+    SELECT c_custkey, COUNT(o_orderkey) AS c_count
+    FROM customer
+    LEFT JOIN orders ON c_custkey = o_custkey AND o_comment NOT LIKE '%special%requests%'
+    GROUP BY c_custkey
+) AS c_orders
+GROUP BY c_count
+ORDER BY custdist DESC, c_count DESC;
+
+logical_plan follows:
+Step 1: Operator: read.
+Target columns: None.
+target steps: None.
+operation details: use pandas to read '/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/customer.csv'.
+Read Data from 'orders.csv'
+
+Step 2: Operator: read.
+Target columns: None.
+target steps: None.
+operation details: use pandas to read '/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/orders.csv'.
+Filter 'orders' Data
+
+Step 3: Operator: filter.
+Target columns: orders.o_comment.
+target steps: Step 2.
+operation details: Filter orders.o_comment NOT LIKE '%special%requests%' from Step 2.
+Join 'customer' and Filtered 'orders'
+
+Step 4: Operator: join.
+Target columns: None.
+target steps: Step 1, Step 3.
+operation details: Step 1 join Step 3 on customer.c_custkey = orders.o_custkey.
+Group and Count Orders
+
+Step 5: Operator: select.
+Target columns: customer.c_custkey, COUNT(orders.o_orderkey).
+target steps: Step 4.
+operation details: Select customer.c_custkey, COUNT(orders.o_orderkey) AS c_count from Step 4 GROUP BY customer.c_custkey.
+Group and Count c_count
+
+Step 6: Operator: select.
+Target columns: c_count, COUNT().
+target steps: Step 5.
+operation details: Select c_count, COUNT() AS custdist from Step 5 GROUP BY c_count.
+Order the Results
+
+Step 7: Operator: order_by.
+Target columns: custdist, c_count.
+target steps: Step 6.
+operation details: Order Step 6 by custdist DESC, c_count DESC.
+Remove Duplicates
+
+Step 8: Operator: distinct.
+Target columns: None.
+target steps: Step 7.
+operation details: Distinct Step 7.
+Write Output to File
+
+Step 9: Operator: write.
+Target columns: None.
+target steps: Step 8.
+operation details: write Step 8 to '/home/data/output.csv'.

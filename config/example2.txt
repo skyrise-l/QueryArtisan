@@ -1,0 +1,47 @@
+Step 1:
+Operator: read
+Target columns: None
+Target steps: None
+Operation details: (1) Use pandas to read 'Reviews.csv' as Reviews from file path '/mnt/Reviews.csv' (2) Perform data preprocessing on Reviews.  
+
+Step 2:
+Operator: read
+Target columns: None
+Target steps: None
+Operation details: (2) Use pandas to read 'Business.csv' as Business from file path '/mnt/Business.csv' (2) Perform data preprocessing on Business.
+
+Step 3:
+Operator: join
+Target columns: None
+Target steps: Step 1, Step 2
+Operation details: Step 1 join Step 2 on Reviews.business_id = Business.business_id.
+
+Step 4:
+Operator: filter
+Target columns: Business.active, Business.city
+Target steps: Step 3
+Operation details: Filter Step 3 Where Business.active = 'True' and Business.city = 'Phoenix'.
+
+Step 5:
+Operator: group_by
+Target columns: Reviews.business_id
+Target steps: Step 4
+Operation details: group Step X by Reviews.business_id.
+
+Step 6:
+Operator: having
+Target columns: Reviews.review_length
+Target steps: Step 5
+Operation details: Having Avg(Reviews.review_length)  > 10.
+
+Step 7:
+Operator: select
+Target columns: Business.business_id
+Target steps: Step 6
+Operation details: Select Business.business_id from Step 6.
+
+Step 8:
+Operator: write
+Target columns: None
+Target steps: Step 7
+Operation details: Write Step 7 to file_1_path.

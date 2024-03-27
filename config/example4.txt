@@ -1,0 +1,50 @@
+Step 1: Operator: read.
+Target columns: None.
+target steps: None.
+operation details: use pandas to read table: 'customer' , file_path is '/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/customer.csv'.
+
+Step 2: Operator: read.
+Target columns: None.
+target steps: None.
+operation details: use pandas to read table: 'orders' , file_path is '/mnt/d/数据库/GPT3_project/src/GPT3/data/tpch/orders.csv'.
+
+Step 3: Operator: filter.
+Target columns: "orders.o_comment".
+target steps: Step 2.
+operation details: Filter Step 2 Where "orders.o_comment" NOT LIKE '%special%requests%'.
+
+Step 4: Operator: filter.
+Target columns: "customer.name".
+target steps: Step 1.
+operation details: Filter "customer.name" = 'job' from Step 1.
+
+Step 5: Operator: join.
+Target columns: "customer.c_custkey","orders.o_custkey".
+target steps: Step 3, Step 4.
+operation details: Step 3 join Step 4 on "customer.c_custkey" = "orders.o_custkey".
+
+Step 6: Operator: group_by.
+Target columns: "customer.c_custkey".
+target steps: Step 5.
+operation details: group Step 5 by "customer.c_custkey".
+
+Step 7: Operator: select.
+Target columns: "customer.c_custkey", COUNT("orders.o_orderkey") as c_count.
+target steps: Step 6.
+operation details: Select "customer.c_custkey", COUNT("orders.o_orderkey") as c_count from Step 6.
+
+# use COUNT("orders.o_orderkey") as c_count before
+Step 8: Operator: order_by.
+Target columns: "customer.c_custkey", c_count.
+target steps: Step 7.
+operation details: Order Step 7 by "customer.c_custkey" DESC, c_count DESC.
+
+Step 9: Operator: distinct.
+Target columns: None.
+target steps: Step 8.
+operation details: Distinct Step 8.
+
+Step 10: Operator: write.
+Target columns: None.
+target steps: Step 9.
+operation details: write Step 9 to '/mnt/data/output.csv'.

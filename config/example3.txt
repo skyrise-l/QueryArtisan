@@ -1,0 +1,29 @@
+Step 1:
+Operator: read
+Target columns: None
+Target steps: None
+Operation details: (1) Use pandas to read 'Reviews.csv' as Reviews from file path '/mnt/data/Reviews.csv' (2) Perform data preprocessing on Reviews.  
+
+Step 2:
+Operator: filter
+Target columns: "active", "city"
+Target steps: Step 1
+Operation details: Filter Step 2 Where "active" = 'True' and "city" = 'Phoenix'.
+
+Step 3:
+Operator: select
+Target columns: "business_id"
+Target steps: Step 2
+Operation details: Select "business_id" from Step 2.
+
+Step 4:
+Operator: aggregation
+Target columns: "business_id"
+Target steps: Step 3
+Operation details: Count("business_id")from Step 3.
+
+Step 5:
+Operator: write
+Target columns: None
+Target steps: Step 4
+Operation details: Write Step 4 to file_1_path.
