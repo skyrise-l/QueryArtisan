@@ -381,3 +381,9 @@ class logical_plan:
         self.results += "\nSpecific operation: Write the result of the Step " + str(self.step_count - 1) + " to the file:'" + path + "'.\n"
 
         return time_comsum, self.results
+    
+
+    def gen_check_message():
+        messages = "The logical plan you generated seems to contain errors. Please review the information I provided, and attempt to regenerate the logical plan. Make sure to check the syntax, column names, and logical relationships used."
+
+        return messages

@@ -47,10 +47,13 @@ class process_util:
         
     @staticmethod
     def exact_code(message):
-        
+            # 正则表达式：匹配以 "import" 开头的代码块，忽略```python等前缀
             pattern = r'```.*?(import pandas.*?)```'
 
+            # 查找所有匹配
             matches = re.findall(pattern, message, re.DOTALL)
+
+            # 初始化code字符串
             code = ""
 
             if not matches:
@@ -137,7 +140,7 @@ class process_util:
 
         file_path =os.path.join(DATA_JSON_DIR, filename) 
 
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', encoding='utf-8') as file:
             data = json.load(file)
         
         # Creating the nested structure
@@ -166,7 +169,7 @@ class process_util:
         uid = 1
         message = ""
         for operation, Target_columns, Target_steps, Details in steps:
-            if operation != "read" and operation != "write":
+            if operation != "read":
                 Target_columns = read_logical.del_table_ref(Target_columns, columns_type)
                 Details = read_logical.del_table_ref(Details, columns_type)
             message += "Step " + str(uid) + ": "

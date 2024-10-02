@@ -25,13 +25,13 @@ class StepManager:
             self.initialize_steps(initial_steps)
 
     def insert_step_at_beginning(self, operation, target_columns, details, target_steps=None):
-
+        # 插入新步骤并更新所有步骤的顺序
         new_order = 0
         new_step = Step(operation, target_columns, details, new_order)
         self.steps[new_order] = new_step
 
-
-        for order, step in list(self.steps.items())[1:]:  
+        # 更新现有步骤的顺序和依赖关系
+        for order, step in list(self.steps.items())[1:]:  # 跳过刚添加的步骤
             step.order += 1
             self.steps[step.order] = step
         self.current_order += 1
@@ -82,7 +82,7 @@ class StepManager:
     def parse_target_steps(self, target_steps_str):
         if target_steps_str:
             numbers = re.findall(r'\d+', target_steps_str)
-            return [int(num) - 1 for num in numbers] 
+            return [int(num) - 1 for num in numbers]  # 减1是为了将步骤编号转换为列表索引
         else:
             return []
         
@@ -97,7 +97,9 @@ class StepManager:
 class steps_correction():
     @staticmethod
     def check_foreign_key_relation(table1, col1, table2, col2, table_key):
-  
+        # 检查给定的两个表和列是否存在有效的外键关系
+        # 此实现现在支持一个键同时作为多个表的外键
+
         def is_foreign_key_to(fk_table, fk_col, pk_table, pk_col):
             for fk in table_key[fk_table].get('ret_fks', []):
                 for fk_column, pk_reference in fk.items():
@@ -118,7 +120,7 @@ class steps_correction():
             for fk_col, pk_col in fk.items():
                 if pk_col.startswith(table1 + '.'):
                     return f'"{table2}.{fk_col}" = "{pk_col}"'
-        return ''  
+        return ''  # 如果找不到有效的连接条件
 
     @staticmethod
     def read_correction(step_manager, columns_type, data):
@@ -131,7 +133,7 @@ class steps_correction():
 
         missing_tables = set(all_tables) - set(read_tables)
         for table in missing_tables:
-      
+            # 对于每个未被读取的表，添加一个新的 "read" 步骤
             file_path = os.path.join(DATA_CONFIG_DIR, data['db_id'], table + ".csv")
             message = f"(1) use pandas to read {table}.csv As {table}, file_path is :'{file_path}'. (2) Perform data preprocessing on {table}"
             step_manager.insert_step_at_beginning('read', "None", message)
@@ -147,11 +149,11 @@ class steps_correction():
                     
                     join_conditions = join_match.group(2)
             
-                 
+                    # Split join conditions
                     condition_matches = re.findall(r'\"?[\w\.\s]+\"?\s*=\s*\"?[\w\.\s]+\"?', join_conditions)
             
                     for condition in condition_matches:
-                  
+                        # 分割每个 join 条件以获取表名和列名
                         condition_pattern = r'\"?([\w\.]+)\.(\w+)\"?\s*=\s*\"?([\w\.]+)\.(\w+)\"?'
                         condition_match = re.search(condition_pattern, condition)
                         if condition_match:
@@ -161,8 +163,9 @@ class steps_correction():
                             col1 = col1.strip().rstrip('.').strip('"')
                             col2 = col2.strip().rstrip('.').strip('"')
 
+                            # 检查连接条件
                             if not steps_correction.check_foreign_key_relation(table1, col1, table2, col2, table_key):
-                             
+                                # 替换为正确的连接条件
                                 correct_condition = steps_correction.get_correct_join_condition(table1, table2, table_key)
                                 step.details = step.details.replace(condition, correct_condition)
 
@@ -171,9 +174,9 @@ class steps_correction():
 
         step_manager = StepManager(columns_type, steps)
 
-        # optional
-        steps_correction.read_correction(step_manager, columns_type, data)
-        steps_correction.join_correction(step_manager, table_key, data)
+        #steps_correction.read_correction(step_manager, columns_type, data)
+
+       # steps_correction.join_correction(step_manager, table_key, data)
 
         formatted_steps = []
         for order in sorted(step_manager.steps.keys()):

@@ -11,6 +11,7 @@ from ..utils.process_util import process_util
 from ..utils.log import ThreadLogging
 from ..utils.read_logical import read_logical
 from ..utils.steps_correction import steps_correction
+from ..utils.offline_database import LogicalPlanDatabaseHandler
 from ..utils.TokenThreadPool import TokenThreadPool, TokenThreadPool_one
 from .preprocessing import preprocessing
 from .query_deconstruct import query_deconstruct
@@ -22,10 +23,12 @@ import psycopg2
 import sys
 #warnings.filterwarnings('ignore', category=UserWarning)
 
-query_table = "bench_raw"    # "data_lake_query"
+query_table = "spider"    # "data_lake_query"
 file_flag = 0
 db_lock = threading.Lock()
 opt_logger = None
+save_offline_database = False
+read_offline_database = False
 
 class Colors:
     RESET = "\033[0m"
@@ -119,23 +122,22 @@ class chatStart:
             thread_logger.close_log()
     
     def start_gpt(self):
-        dbfile = os.path.join(USER_CONFIG_DIR, "gpt_project-bench.db") 
+        dbfile = os.path.join(USER_CONFIG_DIR, "gpt_project-spider.db") 
         #self.evalute_all()
         self.run_code()
-       # run_time.run(dbfile, "unibench")
-        run_time.run_mysql(dbfile, "bench")
-        
-            
+        #run_time.run(dbfile, "unispider")
+        #run_time.run_mysql(dbfile, "spider")
+
     def run_code(self):
         global query_table
         global opt_logger
-        dbfile = os.path.join(USER_CONFIG_DIR, "gpt_project-bench.db") 
+        dbfile = os.path.join(USER_CONFIG_DIR, "gpt_project-spider.db") 
         conn = sqlite3.connect(dbfile)
         conn.row_factory = sqlite3.Row   
 
         cursor = conn.cursor()
         if self.raw:
-            query_table = "bench_raw"
+            query_table = "spider_raw"
 
         cursor.execute(f"SELECT id, db_id, table_id, columns, query, evaluate, gpt_time, opt_time, evidence FROM {query_table} LIMIT -1 OFFSET {self.start}")
         
@@ -145,6 +147,7 @@ class chatStart:
         
         t = 0
 
+        # 数据库线程安全
         important_logfile = os.path.join(LOG_DIR, "important.log") 
         thread_logger = ThreadLogging(important_logfile)
         db = ThreadSafeSQLite(dbfile, thread_logger)
@@ -161,8 +164,9 @@ class chatStart:
             BATCH_SIZE = 100
             
             for i in range(0, len(rows), BATCH_SIZE):
-                batch_rows = rows[i:i + BATCH_SIZE] 
-         
+                batch_rows = rows[i:i + BATCH_SIZE]  # 获取当前批次的行
+                #if i > 300:
+                 #   break
                 for row in batch_rows:
                     if row['evaluate'] == "1":# or row['evaluate'] == "2":    
                         continue
@@ -170,10 +174,13 @@ class chatStart:
                     log_filename = LOG_DIR + f"log_{row['id']}.log"
                     thread_logger = ThreadLogging(log_filename)
 
+                    # 添加任务到线程池
                     pool.add_task(self.process_row, (self.token_pool[0], row, db, thread_logger, pool, self.onekey))
 
-                pool.tasks.join()
+                # 所有任务添加完成后，等待所有任务执行完成
+                pool.tasks.join()  # 等待所有任务完成
         else:
+            print("开始原生测试")
             print(query_table)
             pool = TokenThreadPool_one(10)
 
@@ -182,7 +189,7 @@ class chatStart:
             BATCH_SIZE = 100
             
             for i in range(0, len(rows), BATCH_SIZE):
-                batch_rows = rows[i:i + BATCH_SIZE] 
+                batch_rows = rows[i:i + BATCH_SIZE]  # 获取当前批次的行
               
                 for row in batch_rows:
                     if row['evaluate'] == "1": 
@@ -191,62 +198,58 @@ class chatStart:
                     log_filename = LOG_DIR + f"log_{row['id']}.log"
                     thread_logger = ThreadLogging(log_filename)
 
-
+                    # 添加任务到线程池
                     pool.add_task(self.process_row_raw, (self.token_pool[0], row, db, thread_logger, pool))
 
-            
-                pool.tasks.join() 
+                # 所有任务添加完成后，等待所有任务执行完成
+                pool.tasks.join()  # 等待所有任务完成
 
     def evalute_all(self):
-        dbfile = os.path.join(USER_CONFIG_DIR, "gpt_project-bench.db")
+        dbfile = os.path.join(USER_CONFIG_DIR, "gpt_project-spider.db")
         conn = sqlite3.connect(dbfile)
         conn.row_factory = sqlite3.Row
 
         cursor = conn.cursor()
 
         cursor.execute(
-            f"SELECT id, query, sql, logical_plan, columns, table_id, evidence, db_id, evaluate FROM bench"
+            f"SELECT id, query, sql, logical_plan, columns, table_id, evidence, db_id, evaluate FROM {query_table}"
         )
 
         rows = cursor.fetchall()
         file_flag = 1
         flag = 0
-        index = 0
         for row in rows:
             
-           # if row['evaluate'] == "1":
-            #    continue
-     
-            print(row['id'])
-            '''
-                log_filename = LOG_DIR + f"log_{row['id']}.log"
-                thread_logger = ThreadLogging(log_filename)
-                execute_Instant = execute_plan(1, thread_logger)
-                
-            #  result = execute_Instant.execute_code(row['id'])
-            #  print(result)
-                
-                evaluate = execute_Instant.new_evaluate(row['id'])
-                
-                print(evaluate )
-                if evaluate == False:
-                    if (row['evaluate'] == "1"):
-                        print("this is a trouble :"  + row['id'])
-                    #query = f"UPDATE {query_table} SET evaluate = 2 WHERE id = {row['id']}" 
-                # cursor.execute(query)
-                else :
-                    query = f"UPDATE {query_table} SET evaluate = 1 WHERE id = {row['id']}" 
-                    cursor.execute(query)
-                conn.commit()
+            if row['id'] != "84":
+                continue
+           
+            log_filename = LOG_DIR + f"log_{row['id']}.log"
+            thread_logger = ThreadLogging(log_filename)
+            execute_Instant = execute_plan(1, thread_logger)
+            
+            #result = execute_Instant.execute_code(row['id'])
+          #  print(result)
+
+            evaluate = execute_Instant.evaluate(row['id'])
+            print(evaluate)
+            if evaluate == False:
+                if (row['evaluate'] == "1"):
+                    print("this is a trouble :"  + row['id'])
+                #query = f"UPDATE {query_table} SET evaluate = 2 WHERE id = {row['id']}" 
+               # cursor.execute(query)
+            else :
+                query = f"UPDATE {query_table} SET evaluate = 1 WHERE id = {row['id']}" 
+                cursor.execute(query)
+            conn.commit()
             '''
             log_filename = LOG_DIR + f"log_{row['id']}.log"
             thread_logger = ThreadLogging(log_filename)
             if 1 or row['logical_plan']: #and row['evaluate'] != 1:
-                if row["id"] != "58":
+                if row["id"] != "10":
                     continue
                 print(row["id"])
                 id = row["id"]
-                example = process_util.get_example(self.opt, "bench")
+                example = process_util.get_example(self.opt, "spider")
                 preprocessing_Instant = preprocessing(file_flag, self.opt)
 
                 project_define = preprocessing_Instant.get_define(example)
@@ -272,20 +275,21 @@ class chatStart:
                     #print(content)
                     read_Instant = read_logical() 
                     steps = read_Instant.simple_logical_deal(content, columns_type)
-                    
+                   
                     tmp_gpt_plan = process_util.gen_plan(steps, columns_type)
-                  
+                
                 except Exception as e:
                     
                     exception_info = traceback.format_exception(type(e), e, e.__traceback__)
                     exception_message = ''.join(exception_info)
                     print(Colors.RED + exception_message + Colors.RESET)     
-                    print("Logic plan preliminary analysis failed, row :" + str(id))
+                    print("逻辑计划初步解析失败, row :" + str(id))
                     time.sleep(3)
                     #continue
          
                 correction_Instant = steps_correction()
-            
+                
+                
                 try :
                     steps = correction_Instant.simple_logical_correction(steps, columns_type, table_key, row)
                     tmp_gpt_plan2 = read_Instant.simple_opt(steps, columns_type)
@@ -293,14 +297,13 @@ class chatStart:
                     exception_info = traceback.format_exception(type(e), e, e.__traceback__)
                     exception_message = ''.join(exception_info)
                     print(Colors.RED + exception_message + Colors.RESET)   
-                    print("The initial optimization of the logic plan failed, row :" + str(id))
-         
+                    print("逻辑计划初步优化失败, row :" + str(id))
+                    print(tmp_gpt_plan)
                     time.sleep(3) 
                 ##print(tmp_gpt_plan2)
-     
+                
                 try:
                     db_lock.acquire()
-                    
                     tree_plan = gpt_plan = read_Instant.logical_tree("logical_plan_" + str(row['id']) + ".txt", steps, columns_type)
 
                     file_path = os.path.join(LOGICAL_DIR, "log/logical_plan_" + str(id) + "_tree.log")
@@ -317,8 +320,7 @@ class chatStart:
 
                     with conn_mysql.cursor() as cursor_mysql:
                         cursor_mysql.execute(f"SELECT {id};")
-
-                    
+        
                     ime_comsum, new_logical_plan = logical_Instant.deal_json_plan(id, tree_plan, filePath, columns_type)
                     db_lock.release()
                     
@@ -326,14 +328,16 @@ class chatStart:
                     exception_info = traceback.format_exception(type(e), e, e.__traceback__)
                     exception_message = ''.join(exception_info)
                     thread_logger.log(f"exception_message :{exception_message}") 
-                    thread_logger.log(f"The database optimization failed, resorting to conventional optimization.") 
-        
+                    thread_logger.log(f"数据库优化失败, 使用常规优化") 
+                    print(f"数据库优化失败, 使用常规优化 row {id}")
                     time.sleep(10) 
 
+                    # 休眠结束后，释放锁
                     db_lock.release()
-              
+
                     return tmp_gpt_plan2
-            
+                print(new_logical_plan)
+            '''
             
 class chatQuery:
     def __init__(self, chatgpt, pool, dbname, thread_logger, DEBUG = False, start = 0, opt = False, oneKey = False):
@@ -360,15 +364,15 @@ class chatQuery:
         while self.file_flag < 5:
             try:
                 result = self.gpt_run_raw(row, db, code_flag)
-                if result: 
+                if result:  # 如果result不为False，则跳出while循环
                     break
-                self.thread_logger.log("Did not get the correct result, loop again.")
+                self.thread_logger.log("未得到正确结果，重新循环")
             except BaseException as e:
                 exception_info = traceback.format_exception(type(e), e, e.__traceback__)
                 exception_message = "".join(exception_info)
 
-                self.thread_logger.log(f"error：{exception_message}")
-                self.thread_logger.log(f"error：{self.file_flag}")
+                self.thread_logger.log(f"错误信息：{exception_message}")
+                self.thread_logger.log(f"错误信息：{self.file_flag}")
                 if not self.oneKey:
                     time.sleep(20)
                 process_util.separator(self.thread_logger, 2)
@@ -423,82 +427,23 @@ class chatQuery:
 
         return evaluate
 
-    def gpt_run_raw2(self, row, db, code_flag):
-        self.opt = self.startOpt
-      
-        self.new_conversation()
-
-        pre_define = self.step_1()
-
-        query_deconstruct_Instant = query_deconstruct(self.file_flag, self.thread_logger)
-
-        query_deconstruct_define = query_deconstruct_Instant.get_raw_define(row)
-
-        define = pre_define + query_deconstruct_define
-        
-        physical_Instant = physical_plan(self.thread_logger, self.opt, {}, file_flag, code_flag)
-
-        if self.__show_debug:
-            self.thread_logger.log(f"prompt :{define}") 
-    
-        answner = self.__talk(define)
-
-        if self.__show_debug:
-            self.thread_logger.log(f"answner :{answner}") 
-
-        define = query_deconstruct_Instant.get_raw_define3(row)
-
-        if self.__show_debug:
-            self.thread_logger.log(f"prompt :{define}") 
-    
-        answner = self.__talk(define)
-
-        if self.__show_debug:
-            self.thread_logger.log(f"answner :{answner}") 
-
-
-        physical_Instant.save_code(answner, row['id'])
-
-        process_util.separator(self.thread_logger, 1)
-
-        result, evaluate = self.step_5(row, code_flag)
-        err = result.stderr
-        returncode = result.returncode
-
-        if returncode != 0:
-            self.thread_logger.log(f"execute code error : {err}")
-
-        if evaluate == False:
-            self.thread_logger.log(f"execute code result : {result}")
-            query = f"UPDATE {query_table} SET is_opt = ?, evaluate = 2  WHERE id = ?"
-            params = (str(self.opt), row['id'])
-            db.thread_safe_write(query, params)
-        else :
-            query = f"UPDATE {query_table} SET is_opt = ?, evaluate = 1  WHERE id = ?"
-            params = (str(self.opt), row['id'])
-            db.thread_safe_write(query, params)
-
-            self.thread_logger.log(f"result right, process success")
-
-        return evaluate
-    
     def gpt_init(self, row, db, code_flag):
 
         result = False
-        while self.file_flag < 4:
+        while self.file_flag < 2:
             try:
                 result = self.gpt_run(row, db, code_flag)
-                if result:
+                if result:  # 如果result不为False，则跳出while循环
                     break
-                self.thread_logger.log("Did not get the correct result, loop again.")
+                self.thread_logger.log("未得到正确结果，重新循环")
                 if not self.oneKey:
                     time.sleep(20)
             except BaseException as e:
                 exception_info = traceback.format_exception(type(e), e, e.__traceback__)
                 exception_message = "".join(exception_info)
 
-                self.thread_logger.log(f"error：{exception_message}")
-                self.thread_logger.log(f"error：{self.file_flag}")
+                self.thread_logger.log(f"错误信息：{exception_message}")
+                self.thread_logger.log(f"错误信息：{self.file_flag}")
                 if not self.oneKey:
                     time.sleep(20)
                 process_util.separator(self.thread_logger, 2)
@@ -515,27 +460,24 @@ class chatQuery:
         self.opt = self.startOpt
       
         self.new_conversation()
-        # Step1 
+        # 步骤一：预训练
         
         pre_define = self.step_1()
 
-        # Step2 
+        # 步骤二：问题结构
         query_deconstruct_define, file_path, columns_type, may_trouble_column = self.step_2(row, pre_define)
 
-        # Step3 
+        # 步骤三：逻辑计划生成
         new_logical_plan = self.step_3(row, query_deconstruct_define, file_path, columns_type)
-
-        if self.opt == False:
-            return False
 
         query = f"UPDATE {query_table} SET logical_plan = ? WHERE id = ?"
         params = (new_logical_plan, row['id'])
         db.thread_safe_write(query, params)
         
-        #Step4 
+        # 步骤四：物理计划生成
         self.step_4(row, new_logical_plan, columns_type, code_flag, may_trouble_column)
 
-        # Step5 
+        # 步骤五：代码整合和优化执行
         result, evaluate = self.step_5(row, code_flag)
 
         err = result.stderr
@@ -554,13 +496,22 @@ class chatQuery:
             params = (str(self.opt), row['id'])
             db.thread_safe_write(query, params)
 
+            if save_offline_database:
+                host = 'your_host'
+                user = 'your_username'
+                password = 'your_password'
+                database = 'your_database'
+                lp_handler = LogicalPlanDatabaseHandler(host, user, password, database)
+                plan_id = lp_handler.save_logical_plan(new_logical_plan)
+                lp_handler.close_connection()
+
             self.thread_logger.log(f"result right, process success")
 
         return evaluate
 
     def step_1(self):
         
-        self.thread_logger.log("Step One: Execute the pre-training section.")
+        self.thread_logger.log("步骤一：执行预训练部分")
 
         preprocessing_Instant = preprocessing(file_flag, self.opt)
         
@@ -571,7 +522,7 @@ class chatQuery:
         return project_define
 
     def step_2(self, data, pre_define):       
-        self.thread_logger.log("Step Two: Parsing the structure of the problem.")
+        self.thread_logger.log("步骤二：问题结构解析")
 
         query_deconstruct_Instant = query_deconstruct(self.file_flag, self.thread_logger)
 
@@ -585,7 +536,7 @@ class chatQuery:
 
         may_trouble_column = query_deconstruct_Instant.may_trouble_column
 
-        self.thread_logger.log("Parsing of the problem structure completed, commence obtaining the logic plan.")
+        self.thread_logger.log("问题结构解析完毕，开始获取逻辑计划")
 
         process_util.separator(self.thread_logger, 1)
         
@@ -593,7 +544,7 @@ class chatQuery:
 
 
     def step_3(self, data, query_deconstruct_define, filePath, columns_type):      
-        self.thread_logger.log("Step Three: Logic plan generation and optimization.") 
+        self.thread_logger.log("步骤三：逻辑计划生成和优化") 
 
         if self.__show_debug:
             self.thread_logger.log(f"prompt :{query_deconstruct_define}") 
@@ -607,35 +558,69 @@ class chatQuery:
 
         logical_Instant = logical_plan(self.thread_logger)
         read_Instant = read_logical()
+
+        if read_offline_database:
+            answner2 = self.find_logical_plan(answner)
+        else:
+            answner2 = "Re-examine your logical plan. If there are problems, you can try to regenerate it. If there are no problems, just return to the previously generated logical plan." + answner
+
+        answner = self.__talk_new(answner2)
+
+        def handle_parsing(answner):
+            try:
+                steps = read_Instant.simple_logical_deal(answner, columns_type)
+                tmp_gpt_plan = process_util.gen_plan(steps, columns_type)
+                return steps, tmp_gpt_plan
+            except Exception as e:
+                exception_info = traceback.format_exception(type(e), e, e.__traceback__)
+                exception_message = ''.join(exception_info)
+                self.thread_logger.log(f"exception_message: {exception_message}")
+                self.thread_logger.log(f"逻辑计划解析失败，row: {id}")
+                print(f"逻辑计划解析失败，row: {id}")
+                return None, None
     
-        try :
-            steps = read_Instant.simple_logical_deal(answner, columns_type)
-            tmp_gpt_plan = process_util.gen_plan(steps, columns_type)
-        except Exception as e:
-            exception_info = traceback.format_exception(type(e), e, e.__traceback__)
-            exception_message = ''.join(exception_info)
-            self.thread_logger.log(f"exception_message :{exception_message}") 
-            self.thread_logger.log(f"Logic plan preliminary analysis failed") 
-           
-            self.opt = False
-            return answner
+        steps, tmp_gpt_plan = handle_parsing(answner)
+
+        if steps is None:
+            check_message = logical_Instant.gen_check_message()
+            answner = self.__talk_new(check_message)
+            steps, tmp_gpt_plan = handle_parsing(answner)
+            if steps is None:
+                self.opt = False
+                return answner
         
+         # 第二步：修正和优化
         correction_Instant = steps_correction()
-        
-        try :
-            steps = correction_Instant.simple_logical_correction(steps, columns_type, self.table_key, data)
-            tmp_gpt_plan2 = read_Instant.simple_opt(steps, columns_type)
-        except Exception as e:
-            exception_info = traceback.format_exception(type(e), e, e.__traceback__)
-            exception_message = ''.join(exception_info)
-            self.thread_logger.log(f"exception_message :{exception_message}") 
-            self.thread_logger.log(f"The initial optimization of the logic plan failed.") 
-     
-            self.opt = False
-            return tmp_gpt_plan
+
+        def handle_correction(steps):
+            try:
+                steps = correction_Instant.simple_logical_correction(steps, columns_type, self.table_key, data)
+                tmp_gpt_plan2 = read_Instant.simple_opt(steps, columns_type)
+                return tmp_gpt_plan2
+            except Exception as e:
+                exception_info = traceback.format_exception(type(e), e, e.__traceback__)
+                exception_message = ''.join(exception_info)
+                self.thread_logger.log(f"exception_message: {exception_message}")
+                self.thread_logger.log(f"逻辑计划优化失败，row: {id}")
+                print(f"逻辑计划优化失败，row: {id}")
+                return None
+
+        # 第一次修正
+        tmp_gpt_plan2 = handle_correction(steps)
+        if tmp_gpt_plan2 is None:
+            # 尝试重新生成 answner 并重新修正
+            check_message = logical_Instant.gen_check_message()
+            answner = self.__talk_new(check_message)
+            steps, tmp_gpt_plan = handle_parsing(answner)
+            if steps is None:
+                return tmp_gpt_plan  # 返回第一次解析时生成的逻辑计划
+
+            tmp_gpt_plan2 = handle_correction(steps)
+            if tmp_gpt_plan2 is None:
+                return tmp_gpt_plan  # 如果第二次优化失败，返回初次的 tmp_gpt_plan
 
         new_logical_plan = tmp_gpt_plan2
-  
+
         try:
             db_lock.acquire()
             tree_plan = read_Instant.logical_tree("logical_plan_" + str(id) + ".txt", steps, columns_type)
@@ -662,21 +647,21 @@ class chatQuery:
             exception_info = traceback.format_exception(type(e), e, e.__traceback__)
             exception_message = ''.join(exception_info)
             self.thread_logger.log(f"exception_message :{exception_message}") 
-            self.thread_logger.log(f"The database optimization failed, resorting to conventional optimization.") 
-        
-            self.opt = False
+            self.thread_logger.log(f"数据库优化失败, 使用常规优化") 
+            print(f"数据库优化失败, 使用常规优化 row {id}")
             time.sleep(10) 
 
+            # 休眠结束后，释放锁
             db_lock.release()
         
             return tmp_gpt_plan2
-       
+    
         process_util.separator(self.thread_logger, 1)
 
         return new_logical_plan
 
     def step_4(self, data, new_logical_plan, columns_type, code_flag, may_trouble_column):     
-        self.thread_logger.log("Step Four: Physical plan generation.") 
+        self.thread_logger.log("步骤四：物理计划生成") 
     
         id = data[0]
 
@@ -698,7 +683,7 @@ class chatQuery:
         
 
     def step_5(self, data, code_flag):       
-        self.thread_logger.log("Step Five: Code optimization and execution.") 
+        self.thread_logger.log("步骤五: 代码优化和执行") 
 
         id = data['id']
 
@@ -717,18 +702,44 @@ class chatQuery:
 
     def __talk(self, prompt):
         if len(prompt) > 40000:
-            print("The prompt is too lengthy. Please contact the administrator.")
+            print("prompt过长，请联系管理员")
             sys.exit(1)
 
-        if self.oneKey:
-            target_url = "https://api.pumpkinaigc.online/v1/chat/completions" 
-        else:
-            target_url ="https://api.openai.com/v1/chat/completions"
+        target_url = "https://api.pumpkinaigc.online/v1/chat/completions" 
+
         answner = self.chatgpt.talk(prompt,target_url)
         if answner == "rate limit":
             self.token_limit = True
         return answner
     
+    def __talk_new(self, prompt):
+        if len(prompt) > 40000:
+            print("prompt过长，请联系管理员")
+            sys.exit(1)
+
+        target_url = "https://api.pumpkinaigc.online/v1/chat/completions" 
+
+        answner = self.chatgpt.talk_new(prompt,target_url)
+        if answner == "rate limit":
+            self.token_limit = True
+        return answner
     
- 
+    def find_logical_plan(self, answner):
+        host = 'your_host'
+        user = 'your_username'
+        password = 'your_password'
+        database = 'your_database'
+        lp_handler = LogicalPlanDatabaseHandler(host, user, password, database)
+
+        matching_plans = lp_handler.compare_logical_plan(answner)
+        
+        lp_handler.close_connection()
+
+        messages = "The following one is a logical plan of a query similar to the current query found from an existing data set. You can refer to it to check whether there are problems with the logical plan you generated. If there are problems (including logical plan syntax, format, contextual logic etc.), you can try to regenerate it. If there is no problem, just return to the previously generated logical plan.\n"
+
+        messages += matching_plans
+
+        return messages
+
+
     

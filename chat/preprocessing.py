@@ -7,7 +7,7 @@ class preprocessing:
 
     def get_define(self, example):
 
-
+        
         prenl = self.get_project_struct()
 
         prenl += self.get_example(example)
@@ -42,17 +42,27 @@ class preprocessing:
         ]
 
         prenl = "Now, I will need you to undergo a data analysis process. I will provide information or requirements one by one. Please remember the relevant information and complete the corresponding tasks according to the given instructions:\n"
-       
+        #"接下来我将需要你进行一个数据分析过程，我将依次给出一些信息或者要求，请你记住相关信息和按照要求完全相应任务：\n"
+
         prenl += "## 1.First, I have defined a set of logical plan syntax. Please remember them and generate logical plans according to this syntax when I subsequently ask you to do so. The syntax for logical plans is as follows:\n"
         
-    
+        # "## 1.首先，我定义了一套逻辑计划语法，请你记住它们，并在我后续要求你生成逻辑计划时按照这些语法进行生成。逻辑计划语法如下：\n"
+
         prenl +=  "#(1) Syntax 1: Every step in the logical plan should be represented by an operator (indicating the operation to be performed in this step, with only one operation per step), target columns (indicating the columns on which the operation is performed for this step, can be empty), target steps (indicating further operations on the results of which steps for this step, can be empty), operation details (indicating the specific operation for this step, cannot be empty).\n"
 
-       
+       #  "#(2)语法2:除读取数据表的操作外，其余逻辑计划步骤将包含对应操作数据和对应的操作符，操作符包括：'filter', 'join', 'min', 'max', 'count', 'group_by'.\n"
+
         prenl += "#(2) Syntax 2: The operators mentioned in Syntax 2, along with their corresponding step formats and explanations for each step, are provided below:\n"
-         
+        
+        # "#(3)语法3:语法2中的提到的操作符以及对应的步骤具体格式为:"
+        
         for ex in op_exlain:
             prenl += ex
+        
+       # prenl += "#In addition to operators, there are some syntactic details worth noting: 1) such as the DISTINCT operation. For example, using DISTINCT in a query like SELECT DISTINCT table_1.column1 is valid. Additionally, aggregate functions like count(DISTINCT table_1.column1) are also valid. These operations allow for obtaining distinct values for specified columns. If you want to apply DISTINCT to the entire query, you can use the DISTINCT operator mentioned above."
+       # prenl += "2) When query related to maximum, minimum, or similar problems, it is preferable to prioritize using 'ORDER BY' + 'LIMIT' rather than using aggregate functions such as 'MAX' or 'MIN.' The former approach tends to be more efficient."
+        
+        # "#(4)语法4:结合语法3中的操作符和对应描述，这里给出逻辑计划的每一个步骤(除第一步外)具体格式示例如下: '**步骤2:** 操作数据:表1(table_name1.csv)和表2(table_name2.csv).\n 操作符:join.\n 逻辑计划步骤:将表table_name1.csv 与表table_name1.csv 根据列column1进行连接操作.'\n"
       
         prenl += "\n#(3) Syntax 3: During the process of generating the entire logical plan, please follow the logic of SQL queries using operators. Typically, each SELECT implies a query or subquery.."
     
@@ -69,13 +79,21 @@ class preprocessing:
         prenl += "#(6) Syntax 6: The 'Perform data preprocessing' within the read operator does not involve specific operations during the logical planning phase. Corresponding code will be generated during the code generation phase.\n"
         
         prenl += "#(7) Syntax 7: Note that in logical plan, intermediate results may be generated (such as subqueries in SQL). Therefore, the data manipulated by operators can be the result of any step, and the target step can also be the result of any preceding step, not necessarily the one immediately before.\n"
-       
+        # prenl += "#(4) Syntax 4: If there are subqueries in the query, where the main query relies on the results of the subquery, it is necessary to generate logical plans separately for the main query and the subquery. The steps of the main logical plan and the subquery logical plan can be assigned a set of numbers, as both the main query and the subquery are part of the same data analysis task.\n"
+        
+        #prenl += "For example: Subquery 1: Step 1 ...\n Step 2 ... \n Step 3 ... \n Mainquery: Step 4 ...\n Step 5 ... \n Step 6 ...\n"
+        # "#(6)语法6:在逻辑计划的生成过程中，步骤的操作数据除非必要否则尽量避免使用上一步骤的结果，即尽可能使各个步骤可以并行.\n"
+
+        #prenl += "#(7)语法7:所有数据操作中所使用的列名请注意使用小写, 在使用sql中给出的条件属性值的时候也请转化为小写."
+
         return prenl
    
     
     def get_example(self, example):
+        #prenl = "Here is an example that includes the data schema information for a query, the query itself, and the corresponding logical query plan:\n"
         prenl = "\nBelow is an example of the logical plan:\n"
-       
+        #"下面是一个示例，包含查询的数据模式信息、查询和对应的查询逻辑计划：\n"
+        
         prenl += example
 
         prenl += "\nThe example logical plan end.\n"

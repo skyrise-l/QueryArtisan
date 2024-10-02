@@ -244,7 +244,7 @@ class DataOperationTree:
     
                 join_flag = 0
                 for condition in condition_matches:
-                
+                    # 分割每个 join 条件以获取表名和列名
                     condition_pattern = r'\"(.*?)\.(.*?)\"\s*=\s*\"(.*?)\.(.*?)\"'
                     condition_match = re.search(condition_pattern, condition)
                     if condition_match:
@@ -320,7 +320,7 @@ class DataOperationTree:
                 
         
         return results
-    
+
 def save_tree_to_file(tree, filename):
     file_path = os.path.join(LOGICAL_DIR, "tree/" + filename[:-4] + "_tree.txt")
     if os.path.exists(file_path):
@@ -593,7 +593,7 @@ class read_logical():
                     else:
                         string = re.sub(pattern, values, string, flags=re.IGNORECASE)
             return string
-        
+
         # Replace table names in all variables
         operation = replace_table_names(operation, table_map)
         target_columns = replace_table_names(target_columns, table_map)
@@ -646,7 +646,7 @@ class read_logical():
         
             return string
         
-        
+
         def map_table_column(input_string, columns_dic):
             for table, columns in columns_dic.items():
                 # 检查是否存在true_column_names字典
@@ -661,13 +661,13 @@ class read_logical():
         
         target_columns = map_table_column(target_columns, columns_type)
         details = map_table_column(details, columns_type)
-       
+
         target_columns = quote_table_column(target_columns, columns_type)
         details = quote_table_column(details, columns_type)
 
-        
-       # target_columns = read_logical.correct_table_name(target_columns, columns_type)
-       # details = read_logical.correct_table_name(details, columns_type)
+
+        target_columns = read_logical.correct_table_name(target_columns, columns_type)
+        details = read_logical.correct_table_name(details, columns_type)
         
         return operation, target_columns, target_steps, details
     
@@ -699,15 +699,17 @@ class read_logical():
 
             if uid != 0 and step_number == "1" and operation == "read":
                 break
+            
+            
             uid += 1
             if operation == "read":
                 read_logical.add_table_map(Details, uid, table_map)
-            elif operation != "write":
+            else:
+                if operation == "write":
+                    continue
                 operation, Target_columns, Target_steps, Details = read_logical.process_variables(operation, Target_columns, Target_steps, Details, table_map, columns_type)
-            
-            
             results.append((operation, Target_columns, Target_steps, Details))
-        
+           
         return results
 
     @staticmethod
@@ -778,7 +780,7 @@ class read_logical():
                                 break
 
                         
-            if operation != "read" and operation != "write":
+            if operation != "read":
                 Target_columns = read_logical.del_table_ref(Target_columns, columns_type)
                 Details = read_logical.del_table_ref(Details, columns_type)
 

@@ -23,7 +23,7 @@ class query_deconstruct:
 
         return prenl
     
-    def get_columns_des_text2(self, data):
+    def get_columns_des_text(self, data):
 
         base_path = os.path.join(DATA_CONFIG_DIR, data['db_id'])
 
@@ -44,89 +44,7 @@ class query_deconstruct:
         message += "Please note that the column names for the data analysis you are about to perform are highly specialized. You need to parse the query with great caution, as there will definitely be synonymous expressions for column names within the query. You need to identify them and differentiate them from the column values that you intend to use for conditional.\n"
 
         message += "Please remember this information:\n"
-        m1 = "You should use the column name provided in the table information below as the reference for logical planning and code generation. The column_description and column name explanation serves as a description of the column, aiding in your understanding of its meaning and parsing the query.\n"
-               
-        m1 = ""
-        id = 1
-        for file_name in csv_files:
-            file_path = os.path.join(folder_path, file_name)
-            file_path_raw = os.path.join(base_path, file_name)
-            self.file_path[file_name[:-4]] = file_path_raw
-            true_column_names = {}
-            df = pd.read_csv(file_path, encoding='utf-8')
-
-
-            first_row = df.iloc[0]
-
-            m1 += "Table " + str(id) + ' name is: "' + file_name + '", Its absolute path is:' + '"' + file_path_raw + '"\n'
-
-            id += 1
-            
-            if file_name[:-4] in all_columns:
-                target_columns = all_columns[file_name[:-4]]
-                m1 += "Its column infomation are as follows:\n"
-                tmp_key = {}
-                
-                if "ret_pks" in  first_row and first_row["ret_pks"] != "[]":
-                        ret_fks = ast.literal_eval(first_row["ret_pks"])
-                        tmp_key["ret_pks"] = ret_fks
-                        for item in ret_fks:
-                            for key, value in item.items():
-                                table_name, column_name = value.split('.')
-                                if key in all_columns[file_name[:-4]] and table_name in all_columns and column_name in all_columns[table_name]:
-                                    m1 += 'FOREIGN KEY: \"' + file_name[:-4] + "." + key + '\"=\"' + value + "\".(join on t1.col1 = t2.col2).\n"
-                                
-                self.table_key[file_name[:-4]] = tmp_key
-
-                for index, row in df.iterrows(): 
-
-                    if not pd.isna(row['original_column_name']) and row['original_column_name'] in target_columns:
-                        m1 += 'The column name is : "' +  str(row['original_column_name']) + '".'
-                    else:
-                        continue
-                    
-                    if not pd.isna(row['data_format']):
-                        m1 += "The column data_format is '" + str(row['data_format']) + "'."
-                        self.columns_type[file_name[:-4]][row['original_column_name']] = str(row['data_format'])
-
-                    if 'column_name' in row and not pd.isna(row['column_name']):
-                        m1 += "column name Explanation: " + row['column_name'] + "."
-
-                    if 'column_description' in row and not pd.isna(row['column_description']):
-                        m1 += "The column_description is '" + str(row['column_description']) + "'."
-                
-                    if 'value_description' in row and not pd.isna(row['value_description']):
-                        m1 += "Other column information: '" + str(row['value_description']) + "'."    
-
-                    m1 += '\n'
-            else:
-                m1 += "This table does not provide column information, indicating that the query may involve other aspects such as the number of rows in the table."
-            
-        
-        message += m1
-        return message
-    
-    def get_columns_des_text(self, data):
-
-        base_path = os.path.join(DATA_CONFIG_DIR, data['db_id'])
-
-        folder_path = os.path.join(base_path, "database_description/")
-
-        all_files = ast.literal_eval(data['table_id'])
-
-        all_columns = ast.literal_eval(data['columns'])
-
-        for file in os.listdir(base_path):
-            if file.endswith(".csv") and file[:-4] in all_columns:
-                self.columns_type[file[:-4]] = {}
-
-        csv_files = [file + ".csv" for file in all_files]
-
-        message = "## 2. Now for the second step, I will provide you with all the data information that you may need for this data analysis. You should use all mentioned tables whenever possible.\n"
-        
-        message += "Please note that the column names for the data analysis you are about to perform are highly specialized. You need to parse the query with great caution, as there will definitely be synonymous expressions for column names within the query. You need to identify them and differentiate them from the column values that you intend to use for conditional.\n"
-
-        message += "Please remember this information:\n"
+        # "## 2.现在第二步，我将给出你本次数据分析可能用到的所有表名、表的绝对路径及其列名，请你记住这些信息:\n"
         m1 = "You should use the column name provided in the table information below as the reference for logical planning and code generation. The column_description and column name explanation serves as a description of the column, aiding in your understanding of its meaning and parsing the query.\n"
                
         m1 = ""
@@ -153,7 +71,6 @@ class query_deconstruct:
                 m1 += "Its column infomation are as follows:\n"
                 tmp_key = {}
                 
-          
                 if "ret_pks" in  first_row and first_row["ret_pks"] != "[]":
                         ret_fks = ast.literal_eval(first_row["ret_pks"])
                         tmp_key["ret_pks"] = ret_fks
@@ -199,7 +116,7 @@ class query_deconstruct:
             m1 = "# The objective of this data analysis does not include relational data tables."
         else :
             m1 = "# The relational data for this data analysis is as follows:\n"
-         
+            # 本次数据分析的关系型数据如下：
             for file_name in table_list:
                 file_path = os.path.join(DATA_TABLE_DIR, file_name)
                 
@@ -220,7 +137,7 @@ class query_deconstruct:
             m1 = "# The objective of this data analysis does not include json data."
         else :
             m1 = "# The json data for this data analysis is as follows:\n"
-          
+            # 本次数据分析的关系型数据如下：
             for file_name in json_list:
                 file_path = os.path.join(DATA_JSON_DIR, file_name)
                 
@@ -235,7 +152,7 @@ class query_deconstruct:
             m1 = "# The objective of this data analysis does not include graph data."
         else :
             m1 = "# The graph data for this data analysis is as follows:\n"
-     
+            # 本次数据分析的关系型数据如下：
             for graph, graph_files in graph_list.items():
                 
                 m1 += "The graph name is '" + graph + "'. (1) The nodes data csv files include:"
@@ -246,7 +163,7 @@ class query_deconstruct:
                     m1 += "The one node file is: '" + node_file + "', Its absolute path is:'" + file_path + "', Its column names are as follows:"
                 
                     df = pd.read_csv(file_path, encoding='unicode_escape')
-                 
+                    # 获取列名列表
                     columns = df.columns.tolist()
                     for i, column in enumerate(columns):
                         if i == len(columns) - 1:
@@ -263,7 +180,7 @@ class query_deconstruct:
                     m1 += "The one edge file is: '" + node_file + "', Its absolute path is:'" + file_path + "', Its column names are as follows:"
                 
                     df = pd.read_csv(file_path, encoding='unicode_escape')
-       
+                    # 获取列名列表
                     columns = df.columns.tolist()
                     for i, column in enumerate(columns):
                         if i == len(columns) - 1:
@@ -292,6 +209,7 @@ class query_deconstruct:
             
         message += "Next comes the specific data information, please remember these details:\n"
 
+        # "接下来是具体的数据信息，请你记住这些信息:\n"
         
         table_list = process_util.list_files(DATA_TABLE_DIR)
         json_list = process_util.list_files(DATA_JSON_DIR)
@@ -306,9 +224,8 @@ class query_deconstruct:
 
     def get_logical_prompt(self, data):
         
-      
+    
         message = "## 3. Now, let's move on to the third step. Below, I will provide natural language query for this data analysis. These statements will inquire within the scope of the tables provided earlier. Please analyze and generate a complete data analysis logical plan that includes reading data files, executing the corresponding queries, and saving the results to a file. The syntax and format of the logical plan should follow the information provided earlier.\n"
-        
       
         presql = data['query']# data['sql'].replace('\t', ' ').replace('\n', ' ')
 
@@ -342,7 +259,11 @@ class query_deconstruct:
         message += "#(8) group_bt operations are typically used when there are aggregate functions and aggregate function conditions. If you only need to query the result of a specific aggregate function and other columns simultaneously, grouping is usually not necessary. For example, select MAX(col) and col2 AS result.\n"
 
         message += "#(9) When generating a logical plan, all the tables I provided should be utilized. If I have specified relevant foreign key relationships, please use joins to connect them via the foreign keys as much as possible; otherwise, there is a high probability of error. Additionally, please note that each join step should only connect two tables.\n"
-         
+        
+
+        #message += "#(2) When generating a logical plan, please ensure that the operation sequence follows the priority order: join > filter > select (with join having the highest priority, preferably executed first). This is to ensure that there are no issues with incorrect column usage. Perform the join operation first, followed by the filter operation, and finally execute the select operation as late as possible. This is a rational and safe execution order."
+      #  "#此外，在进行自然语言查询语句解析时，注意只需要查询问题所指定的列，无需额外查询主键；同时注意对最后的结果进去去重(如果存在join等操作可能会有重复的元组)。注意：请使用英文回答："
+        
         return message
     
     def get_project_opt_struct(self):
@@ -359,11 +280,13 @@ class query_deconstruct:
             "write operator format: (Step N: Operator: write.\n Target columns: None.\n target steps: Step X.\n operation details: Write Step X to file_1_path.)\n Step explanation: This step is typically the final one, as it saves the results of the entire data analysis to a specified file.\n"
         ]
         prenl = "Now, I will need you to undergo a data analysis process. I will provide information or requirements one by one. Please remember the relevant information and complete the corresponding tasks according to the given instructions:\n"
-   
-        prenl += "## 1.First, I have defined a set of logical plan syntax. Please remember them and generate logical plans according to this syntax when I subsequently ask you to do so. The syntax for logical plans is as follows:\n"
       
+        prenl += "## 1.First, I have defined a set of logical plan syntax. Please remember them and generate logical plans according to this syntax when I subsequently ask you to do so. The syntax for logical plans is as follows:\n"
+        
+   
         prenl +=  "#(1) Syntax 1: Every step in the logical plan should be represented by an operator (indicating the operation to be performed in this step, with only one operation per step), target columns (indicating the columns on which the operation is performed for this step, can be empty), target steps (indicating further operations on the results of which steps for this step, can be empty), operation details (indicating the specific operation for this step, cannot be empty).\n"
 
+      
         prenl += "#(2) Syntax 2: The operators mentioned in Syntax 2, along with their corresponding step formats and explanations for each step, are provided below:\n"
         
         for ex in op_exlain:
@@ -383,16 +306,16 @@ class query_deconstruct:
         presql = data['query']
         prenl += "At first, the most important: The specific query statement is: '(" + presql + ")'.\n"
         
-        prenl += self.get_columns_des_text(data)
+        prenl += self.get_columns_row_text(data)
 
         prenl += "Now, let's proceed with the third step. Please generate the corresponding Python code. And the specific requirements are as follows:\n"
-    
+     
         prenl += "(1) Generate corresponding Python execution code for each logical plan step.\n"
- 
+      
         prenl+= "(2) Ensure that all code is within the same context.\n"
 
         path = GPT_RESULT_DIR + str(data['id']) + ".txt"
-    
+        
         prenl += "(3) The result of the code need write to the path: '" + path + "'."
         
         prenl += "Please note that the target file for saving is in TXT format. If the saved content is only a single computed value, it should be saved in the following example code format:"
@@ -404,7 +327,7 @@ class query_deconstruct:
         prenl += "df.to_csv('result_1.txt', sep=',', index=False)"
 
         prenl += "(4) Please generate the Python code using '```python' at the beginning and using '```' at the end for better identification."
-       
+        
         prenl += "(5) \nDon't forget to import the pandas library.\n"
 
         prenl += "## Now you can begin generating the data analysis code for the given question."
@@ -425,7 +348,7 @@ class query_deconstruct:
         message = "## 2. Now for the second step, I will provide you with all the data information that yo may need for this data analysis.\n"
     
         message += "Please remember this information:\n"
-     
+       
         m1 = ""
         id = 1
         for file_name in csv_files:
@@ -442,11 +365,13 @@ class query_deconstruct:
             id += 1
             
             tmp_key = {}
-          
-                
             if "ret_pks" in  first_row and not pd.isna(first_row["ret_pks"]):
                 tmp_key["ret_pks"] = ast.literal_eval(first_row["ret_pks"])
-                for item in tmp_key["ret_pks"]:
+                m1 += "The Table " + str(first_row["primary_key"]) + "\n"
+                
+            if "ret_fks" in  first_row and not pd.isna(first_row["ret_fks"]):
+                tmp_key["ret_fks"] = ast.literal_eval(first_row["ret_fks"])
+                for item in tmp_key["ret_fks"]:
                     for key, value in item.items():
                         table_name, column_name = value.split('.')
                         m1 += 'FOREIGN KEY: \"' + key + '\" REFERENCES \"' + value + '\" (table_name.column_name).\n'

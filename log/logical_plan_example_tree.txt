@@ -1,0 +1,6 @@
+Node: Operation: {aggregation}, Target_steps: {"player.name"}, Target_columns: {None}, specific_info: {'columns': ['Max("player.earnings")'], 'aliases': ['max_earnings'], 'distincts': [0]}, source_table: ['player']
+Node: Operation: {select}, Target_steps: {"player.name"}, Target_columns: {Step 5, Step 10}, specific_info: {'columns': ['"player.name"'], 'aliases': ['0'], 'distincts': [0]}, source_table: ['player']
+Node: Operation: {aggregation}, Target_steps: {"player.name"}, Target_columns: {None}, specific_info: {'columns': ['Max("player.earnings")'], 'aliases': ['max_earnings'], 'distincts': [0]}, source_table: ['player']
+Node: Operation: {select}, Target_steps: {"player.name"}, Target_columns: {None}, specific_info: {'columns': ['"player.name"'], 'aliases': ['0'], 'distincts': [0]}, source_table: ['player']
+Node: Operation: {having}, Target_steps: {auto}, Target_columns: {auto}, specific_info: {'conditions': '"player.earnings" = Max("player.earnings")"player.earnings" = Max("player.earnings") and '}, source_table: ['player']
+Node: Operation: {group_by}, Target_steps: {auto}, Target_columns: {auto}, specific_info: {'conditions': ['"player.name"', '"player.earnings"']}, source_table: ['player']
