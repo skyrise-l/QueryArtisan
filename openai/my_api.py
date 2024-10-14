@@ -23,7 +23,6 @@ class MyApi:
         self.api_key = api_key
         self.system_prompt = getenv("API_SYSTEM_PROMPT", self.DEFAULT_SYSTEM_PROMPT)
         self.messages = self.init_message()
-        self.tmpMessages = self.init_message()
         self.conversation_id = 0
         self.model_slug = model
         self.id = row_id
@@ -73,11 +72,11 @@ class MyApi:
     
     def talk_new(self, prompt, TARGET_URL):
         user_prompt = {"role": "user", "content": prompt}
-        self.tmpMessages = self.messages
-        self.tmpMessages.append(user_prompt)
+        tmpMessages = self.messages.copy()
+        tmpMessages.append(user_prompt)
         data = {
             "model": self.model_slug,
-            "messages": self.tmpMessages,
+            "messages": tmpMessages,
         }
 
         url = TARGET_URL 
@@ -90,19 +89,21 @@ class MyApi:
         )
 
         return self.deal_reply(resp.status_code, json.loads(resp.text), 0)
-
+    
     def deal_reply(self, status, response, flag):
         if status != 200:
             print(f"访问API出现异常，建议查询当前情况：\nrow id :{str(self.id)}\n异常key: {self.api_key}")
             print(f"响应内容: {response}")
-            
             return "rate limit"
 
         choice = response["choices"][0]
+        
         if "message" in choice:
             text = choice["message"].get("content", "")
-        else:
+        elif "delta" in choice:
             text = choice["delta"].get("content", "")
+        else:
+            text = "[ERROR] API response format not recognized."
 
         if flag == 1:
             self.messages.append({"role": "assistant", "content": text})
