@@ -89,7 +89,7 @@ class MyApi:
             **self.req_kwargs,
         )
 
-        return self.deal_reply_new(resp.status_code, json.loads(resp.text), 0)
+        return self.deal_reply(resp.status_code, json.loads(resp.text), 0)
 
     def deal_reply(self, status, response, flag):
         if status != 200:
