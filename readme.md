@@ -14,3 +14,5 @@
    
 **5. Step 5:** Once the token and LLM are set up, you can begin testing.
 
+**Note:** Many configurations are optional, and many parameters are not enabled by default. You are free to configure them as needed.
+
