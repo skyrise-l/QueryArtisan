@@ -39,7 +39,7 @@ class execute_plan:
             df[col] = df[col].apply(lambda x: round(x, 2))
 
     def is_subset_sorted2(self, set1, set2):
-        
+        # 在没有明显行标识符的情况下，查询的数据没有意义，在这种情况下，LLM 可能会多查询一列作为行的标识，这种情况认为是正确的。
         if len(set1) != len(set2):
             return False
     
