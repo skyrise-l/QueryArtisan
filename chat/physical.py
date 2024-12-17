@@ -6,7 +6,7 @@ from ..utils.process_util import process_util
 
 class physical_plan:
 
-    def __init__(self, thread_logger, opt = False, columns_type = {}, file_flag = 0, code_flag = 0, may_trouble_column = []):
+    def __init__(self, thread_logger, opt = False, columns_type = {}, file_flag = 0, code_flag = 0, may_trouble_column = {}):
         self.opt = opt
         self.columns_type = columns_type
         self.file_flag = file_flag
@@ -54,7 +54,6 @@ class physical_plan:
                 exception_info = traceback.format_exception(type(e), e, e.__traceback__)
                 exception_message = ''.join(exception_info)
                 self.thread_logger.log(exception_message)
-
 
 
         message += "#If the type of the prompted column is text or another string type, consider it as a string comparison. For example, if the logical plan has a condition like 'Filter status = 1', and the column 'status' is of text type, then 1 should also be treated as a string, enclosed in quotes. The generated code should look like the following:\n"
@@ -109,14 +108,10 @@ class physical_plan:
 
         message += "Step2 = Step1.groupby('group_column').filter(lambda x: x['value_column'].mean() > value) \n"
         
-        message += "(3) All the read operators in the logical plans I provided contain 'Perform data preprocessing'. This means that data processing is required after reading the data. You need to replace 'table_name' with the variable name of the DataFrame obtained from the read operation, and then add it after the read operation in the example code below:\n"
+        message += "(3) Additionally, I have identified some columns that may cause confusion in Pandas processing. When reading the corresponding table, please make sure to use the following format to read the CSV, replacing file_path with the path to the corresponding table: \n"
 
-        message +=  "(for col in table_name.columns: if table_name[col].dtype == 'bool' or table_name[col].dtype == 'object':table_name[col] = table_name[col].astype(str))\n"
-
-        message += "Additionally, I have identified some columns that may cause confusion in Pandas processing. Please include the following code in the preprocessing steps after reading all files: \n"
-
-        for column in self.may_trouble_column:
-            message += f"table_name[\"{column}\"] = table_name[\"{column}\"].astype(str))\n"
+        for table in self.may_trouble_column:
+            message += f"{table} = pd.read_csv(file_path, dtype={{column: str for column in self.may_trouble_column[table]}})"
 
         message += "(4) When performing column value comparisons, please pay attention to the types of the relevant columns as indicated in the logical plan. Different comparison code should be employed based on the varying types of columns.\n"
       

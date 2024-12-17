@@ -586,7 +586,6 @@ class chatQuery:
             answner = self.__talk_new(check_message)
             steps, tmp_gpt_plan = handle_parsing(answner)
             if steps is None:
-                self.opt = False
                 return answner
         
          # 第二步：修正和优化

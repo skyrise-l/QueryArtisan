@@ -1,0 +1,6 @@
+original_column_name,true_column_name,data_format,true_table_name
+col0,Type of aphasia,text,Aphasia
+col1,Repetition,text,
+col2,Naming,text,
+col3,Auditory comprehension,text,
+col4,Fluency,text,

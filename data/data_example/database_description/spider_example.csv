@@ -1,0 +1,4 @@
+original_column_name,data_format,primary_key,foreign_key,ret_pks,ret_fks
+affiliation_affiliation_id,integer,"PRIMARY KEY : (""affiliation_affiliation_id"")",[],['affiliation_id'],[]
+affiliation_name,text,,,,
+address,text,,,,

@@ -11,7 +11,7 @@ class query_deconstruct:
         self.table_key = {}
         self.file_flag = file_flag
         self.logger = logger
-        self.may_trouble_column = []
+        self.may_trouble_column = {}
         return 
 
     def get_define(self, data, pre_define):
@@ -47,23 +47,26 @@ class query_deconstruct:
         # "## 2.现在第二步，我将给出你本次数据分析可能用到的所有表名、表的绝对路径及其列名，请你记住这些信息:\n"
         m1 = "You should use the column name provided in the table information below as the reference for logical planning and code generation. The column_description and column name explanation serves as a description of the column, aiding in your understanding of its meaning and parsing the query.\n"
                
-        m1 = ""
         id = 1
         for file_name in csv_files:
             file_path = os.path.join(folder_path, file_name)
             table_desc_path = os.path.join(folder_path, "table_description.csv")
             file_path_raw = os.path.join(base_path, file_name)
             self.file_path[file_name[:-4]] = file_path_raw
-            true_column_names = {}
+            true_column_names = {} # if dataset wikisql, it should used to replace the col,col2
             df = pd.read_csv(file_path, encoding='utf-8')
 
-            df2 = pd.read_csv(table_desc_path, encoding='utf-8')
+            if os.path.exists(table_desc_path):
+                df2 = pd.read_csv(table_desc_path, encoding='utf-8')
 
             first_row = df.iloc[0]
 
+            self.may_trouble_column[file_name] = []
+
             m1 += "Table " + str(id) + ' name is: "' + file_name + '", Its absolute path is:' + '"' + file_path_raw + '"\n'
 
-            m1 += "the table content is about :" + df2[df2['table'] == file_name[:-4]]['table_descrip'].values[0] + ".\n"
+            if os.path.exists(table_desc_path):
+                m1 += "the table content is about :" + df2[df2['table'] == file_name[:-4]]['table_descrip'].values[0] + ".\n"
             id += 1
             
             if file_name[:-4] in all_columns:
@@ -92,6 +95,13 @@ class query_deconstruct:
                     if not pd.isna(row['data_format']):
                         m1 += "The column data_format is '" + str(row['data_format']) + "'."
                         self.columns_type[file_name[:-4]][row['original_column_name']] = str(row['data_format'])
+                        
+                        try:
+                            if row['data_format'] == "string":
+                                self.may_trouble_column[file_path_raw].append(row['original_column_name'])
+                        except:
+                            pass
+
 
                     if 'column_name' in row and not pd.isna(row['column_name']):
                         m1 += "column name Explanation: " + row['column_name'] + "."
